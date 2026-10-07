@@ -5,6 +5,8 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 // HMAC-SHA 알고리즘에 맞는 비밀키(Key) 객체를 생성하기 위한 클래스 임포트
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.SignatureAlgorithm;
+import java.util.Date;
 
 /*
 Hash-based Message Authentication Code
@@ -47,6 +49,19 @@ public class JwtTokenProvider {
     byte[] bytes = secretKey.getBytes(StandardCharsets.UTF_8);
     // 변환된 바이트를 바탕으로 안전한 HMAC-SHA 암호화 키 객체를 생성하여 저장
     this.key = Keys.hmacShaKeyFor(bytes);
+  }
+
+  // 토큰 생성
+  public String createToken(String username) {
+    Date now = new Date();
+    Date expiry = new Date(now.getTime() + 86400000L);
+
+    return Jwts.builder()
+            .setSubject(username)
+            .setIssuedAt(now)
+            .setExpiration(expiry)
+            .signWith(key, SignatureAlgorithm.HS256)
+            .compact();
   }
 
   // 토큰에서 회원 이름 추출

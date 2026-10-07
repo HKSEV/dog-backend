@@ -77,16 +77,7 @@ public class MemberController { // 외부에서 접근 가능한 컨트롤러 �
         // 로그인 성공 시 사용자의 name(또는 email)을 기반으로 JWT 토큰 생성
         // JwtTokenProvider에서 getSubject()로 name을 쓰도록 설정되어 있으므로
         // member.getName()을 넣음
-        String token = io.jsonwebtoken.Jwts.builder()
-                .setSubject(member.getName())
-                .setIssuedAt(new java.util.Date())
-                .setExpiration(new java.util.Date(System.currentTimeMillis() + 86400000L)) // 1일 유효
-                .signWith(
-                  io.jsonwebtoken.security.Keys.hmacShaKeyFor(
-                    "defaultSecretKeyForMissingPetReportProject1234567890defaultSecretKey"
-                            .getBytes(StandardCharsets.UTF_8)
-                  ), SignatureAlgorithm.HS256
-                ).compact();
+        String token = jwtTokenProvider.createToken(member.getName());
 
         // 프론트엔드가 필요로 하는 정보(닉네임, 토큰 등)를 담은 Map 반환
         Map<String, Object> responseMap = new HashMap<>();

@@ -59,5 +59,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     } catch (Exception e) {
       logger.error("인증정보 설정이 없습니다.", e);
     }
+
+    filterChain.doFilter(request, response);
   }
 }

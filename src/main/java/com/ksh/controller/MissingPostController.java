@@ -25,7 +25,9 @@ public class MissingPostController {
           @RequestPart(value = "file", required = false) MultipartFile file,
           // 인증 정보를 가져오는 Principal
           Principal principal) {
-    MissingPostResponseDto response = service.createPost(requestDto, principal.getName());
+    MissingPostResponseDto response = service.createPost(
+            requestDto, file, principal.getName()
+    );
     return ResponseEntity.ok(response);
   }
 

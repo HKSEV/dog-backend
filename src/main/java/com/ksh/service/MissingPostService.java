@@ -12,9 +12,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -67,10 +71,13 @@ public class MissingPostService {
   // 실종 신고글 작성
   @Transactional
   public MissingPostResponseDto createPost(
-          MissingPostRequestDto requestDto, String username) {
+          MissingPostRequestDto requestDto,
+          MultipartFile file,
+          String username) {
     Member member = memberRepository.findByUsername(username)
             .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
     MissingPost post = new MissingPost();
+    File saveFile = null;
 
     post.setTitle(requestDto.getTitle());
     post.setContent(requestDto.getContent());
@@ -80,10 +87,42 @@ public class MissingPostService {
     post.setWeight(requestDto.getWeight());
     post.setColor(requestDto.getColor());
     post.setRescueLocation(requestDto.getRescueLocation());
-    post.setMediaUrls(requestDto.getMediaUrls());
     post.setStatus(PostStatus.MISSING);
     post.setAuthor(member);
     post.setCreatedAt(LocalDateTime.now());
+
+    // 파일 처리
+    if (file != null && !file.isEmpty()) {
+      try {
+        String uploadDir = System.getProperty("user.dir") + "/uploads/";
+
+        File dir = new File(uploadDir);
+
+        if (!dir.exists())
+          dir.mkdirs();
+
+        String originalFilename = file.getOriginalFilename();
+
+        String savedFilename = UUID.randomUUID() + "_" + originalFilename;
+
+        saveFile = new File(dir, savedFilename);
+
+        // 실제 파일 저장
+        file.transferTo(saveFile);
+
+        // DB에 저장할 URL
+        String imageUrl = "/uploads/" + savedFilename;
+
+        post.setMediaUrls(List.of(imageUrl));
+      } catch (IOException e) {
+        if (saveFile != null && saveFile.exists())
+          saveFile.delete();
+        throw new RuntimeException(
+                "파일 업로드 중 오류가 발생했습니다.",
+                e
+        );
+      }
+    }
 
     MissingPost savePost = missingPostRepository.save(post);
     return new MissingPostResponseDto(savePost);

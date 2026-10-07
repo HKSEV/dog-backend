@@ -4,6 +4,7 @@ import com.ksh.security.JwtAuthenticationFilter;
 import com.ksh.security.JwtTokenProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.security.config.Customizer;
@@ -47,7 +48,7 @@ public class WebConfig implements WebMvcConfigurer {
     HttpSecurity http, JwtTokenProvider tokenProvider
   ) throws Exception {
     http.cors(Customizer.withDefaults())
-      .csrf(csrf -> csrf.disable())
+      .csrf(AbstractHttpConfigurer::disable)
       .addFilterBefore(
         new JwtAuthenticationFilter(tokenProvider),
         org.springframework.security.web.authentication

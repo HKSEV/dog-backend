@@ -1,0 +1,17 @@
+package com.ksh.dto;
+
+import com.ksh.domain.PostStatus;
+import lombok.*;
+
+import java.util.List;
+
+@Getter
+@Setter
+public class MissingPostRequestDto {
+  private String title, content, breed, gender, age,
+          weight, color, rescueLocation;
+  private List<String> mediaUrls;
+  public PostStatus getStatus() {
+    return null;
+  }
+}

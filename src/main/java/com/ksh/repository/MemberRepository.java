@@ -19,5 +19,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
   Optional<Member> findByEmail(String email);
   // [카카오 로그인] 가입 경로("KAKAO")와 카카오에서 넘겨준 고유 ID 번호를 조합해서
   // 기존에 가입한 적이 잇는 카카오 회원인지 확인
+  Optional<Member> findByUsername(String username);
   Optional<Member> findByProviderAndProviderId(String provider, String providerId);
 }

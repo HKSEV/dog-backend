@@ -2,11 +2,16 @@ package com.ksh.controller;
 
 import com.ksh.entity.Member;
 import com.ksh.repository.MemberRepository;
+import com.ksh.security.JwtTokenProvider;
+import io.jsonwebtoken.SignatureAlgorithm;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 // 내부적으로 @Controller와 @ResponseBody가 합쳐진 형태
@@ -17,10 +22,15 @@ import java.util.Optional;
 public class MemberController { // 외부에서 접근 가능한 컨트롤러 클래스 시작
   // DB와 소통하는 Repository를 담을 불변 객체
   private final MemberRepository memberRepository; // 불변성 설정
+  private final JwtTokenProvider jwtTokenProvider;
 
   // 스프링부트가 실행될 때 자동으로 Repository를 연결해주는 생성자
-  public MemberController(MemberRepository memberRepository) {
+  public MemberController(
+          MemberRepository memberRepository,
+          JwtTokenProvider jwtTokenProvider
+  ) {
     this.memberRepository = memberRepository;
+    this.jwtTokenProvider = jwtTokenProvider;
   } // 객체를 알아서 메모리에 생성해 두었다가 이 컨트롤러가 생성될 때 집어넣음
   
   // 1.중복체크 API
@@ -63,10 +73,32 @@ public class MemberController { // 외부에서 접근 가능한 컨트롤러 �
       Member member = memberOpt.get();
       /* isPresent(): 상자 안에 데이터가 들어있나? 라고 질문
        * .get(): 데이터가 있다면 상자에서 실제 Member 객체를 꺼냄 */
-      if (member.getPassword().equals(loginData.getPassword()))
+      if (member.getPassword().equals(loginData.getPassword())) {
+        // 로그인 성공 시 사용자의 name(또는 email)을 기반으로 JWT 토큰 생성
+        // JwtTokenProvider에서 getSubject()로 name을 쓰도록 설정되어 있으므로
+        // member.getName()을 넣음
+        String token = io.jsonwebtoken.Jwts.builder()
+                .setSubject(member.getName())
+                .setIssuedAt(new java.util.Date())
+                .setExpiration(new java.util.Date(System.currentTimeMillis() + 86400000L)) // 1일 유효
+                .signWith(
+                  io.jsonwebtoken.security.Keys.hmacShaKeyFor(
+                    "defaultSecretKeyForMissingPetReportProject1234567890defaultSecretKey"
+                            .getBytes(StandardCharsets.UTF_8)
+                  ), SignatureAlgorithm.HS256
+                ).compact();
+
+        // 프론트엔드가 필요로 하는 정보(닉네임, 토큰 등)를 담은 Map 반환
+        Map<String, Object> responseMap = new HashMap<>();
+        responseMap.put("nickname", member.getNickname());
+        responseMap.put("name", member.getName());
+        responseMap.put("email", member.getEmail());
+        responseMap.put("token", token);
+
         // DB의 비밀번호와 사용자가 입력한 비밀번호가 일치하는지 검사
-        return ResponseEntity.ok(member);
+        return ResponseEntity.ok(responseMap);
         // 비밀번호가 맞다면 로그인 성공, 회원 정보를 프론트로 넘겨줌
+      }
     }
 
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("이메일 또는 비밀번호가 일치하지 않습니다");

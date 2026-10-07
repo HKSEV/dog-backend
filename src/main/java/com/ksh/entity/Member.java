@@ -41,7 +41,7 @@ public class Member {
 
 	private String profileImageUrl;
 
-	
-
-
+	public String getUsername() {
+		return this.name;
+	}
 }

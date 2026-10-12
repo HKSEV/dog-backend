@@ -4,6 +4,7 @@ package com.ksh.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 // HMAC-SHA 알고리즘에 맞는 비밀키(Key) 객체를 생성하기 위한 클래스 임포트
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.SignatureAlgorithm;
 import java.util.Date;
@@ -25,36 +26,47 @@ HMAC-SHA-256, HMAC-SHA-512
 내가 계산한 값과 상대방이 보낸 코드가 일치하면,
 중간에 데이터가 변조되지 않았고 보낸 사람이 정상적인 상대방임을 알 수 있습니다.
 * */
-import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.nio.charset.StandardCharsets;
 import java.security.Key;
 
 @Component
 // 이 클래스를 스프링 빈으로 등록하여 다른 곳에서 주입받아 사용할 수 있게 함
 public class JwtTokenProvider {
-  // application.properties(또는 기본값)에 설정된 JWT 비밀키 문자열을 가져옴
-  @Value("${jwt.secret:defaultSecretKeyForMissingPetReportProject1234567890defaultSecretKey}")
-  private String secretKey;
+//  // application.properties(또는 기본값)에 설정된 JWT 비밀키 문자열을 가져옴
+//  @Value("${jwt.secret:defaultSecretKeyForMissingPetReportProject1234567890defaultSecretKey}")
+//  private String secretKey;
+//
+//  // JWT 서명 및 검증에 실제로 사용될 암호화 키 객체
+//  private Key key;
+//
+//  // 스프링 빈이 생성된 후 의존성 주입이 끝나면 자동으로 실행되는 초기화 메소드
+//  @PostConstruct
+//  protected void init() {
+//    // 설정된 비밀키 문자열을 UTF-8 바이트 배열로 변환
+//    byte[] bytes = secretKey.getBytes(StandardCharsets.UTF_8);
+//    // 변환된 바이트를 바탕으로 안전한 HMAC-SHA 암호화 키 객체를 생성하여 저장
+//    this.key = Keys.hmacShaKeyFor(bytes);
+//  }
+  private final Key key;
+  private final long expirationTime;
 
-  // JWT 서명 및 검증에 실제로 사용될 암호화 키 객체
-  private Key key;
-
-  // 스프링 빈이 생성된 후 의존성 주입이 끝나면 자동으로 실행되는 초기화 메소드
-  @PostConstruct
-  protected void init() {
-    // 설정된 비밀키 문자열을 UTF-8 바이트 배열로 변환
-    byte[] bytes = secretKey.getBytes(StandardCharsets.UTF_8);
-    // 변환된 바이트를 바탕으로 안전한 HMAC-SHA 암호화 키 객체를 생성하여 저장
-    this.key = Keys.hmacShaKeyFor(bytes);
+  // 생성자를 통해 application.properties의 값들을 안전하게 주입받습니다.
+  public JwtTokenProvider(
+          @Value("${jwt.secret}") String secretKey,
+          @Value("${jwt.expiration-time}") long expirationTime
+  ) {
+    // Base64로 인코딩된 비밀키를 디코딩하여 안전한 Key 객체로 변환합니다.
+    byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+    this.key = Keys.hmacShaKeyFor(keyBytes);
+    this.expirationTime = expirationTime;
   }
 
   // 토큰 생성
   public String createToken(String username) {
     Date now = new Date();
-    Date expiry = new Date(now.getTime() + 86400000L);
+    Date expiry = new Date(now.getTime() + expirationTime);
 
     return Jwts.builder()
             .setSubject(username)

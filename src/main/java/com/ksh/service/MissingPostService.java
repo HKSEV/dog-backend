@@ -74,11 +74,32 @@ public class MissingPostService {
           MissingPostRequestDto requestDto,
           MultipartFile file,
           String username) {
-    Member member = memberRepository.findByUsername(username)
-            .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
-    MissingPost post = new MissingPost();
-    File saveFile = null;
+    // 1. 현재 로그인한 유저의 이메일을 기반으로 DB에서 유저 정보를 조회
+    Member member = memberRepository.findByEmail(username)
+            .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저 입니다"));
 
+    // 2. 파일이 존재할 경우 서버에 저장하고 URL을 DTO의 mediaUrls에 추가
+    if (file != null && !file.isEmpty()) {
+      try {
+        String filename = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+        String uploadDir = System.getProperty("user.dir") + "/uploads/";
+        java.nio.file.Path path = java.nio.file.Paths.get(uploadDir + filename);
+
+        java.nio.file.Files.createDirectories(path.getParent());
+        java.nio.file.Files.write(path, file.getBytes());
+
+        String imageUrl = "http://localhost:8080/uploads/" + filename;
+
+        if (requestDto.getMediaUrls() == null) {
+          requestDto.setMediaUrls(new java.util.ArrayList<>());
+        }
+        requestDto.getMediaUrls().add(imageUrl);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
+
+    MissingPost post = new MissingPost();
     post.setTitle(requestDto.getTitle());
     post.setContent(requestDto.getContent());
     post.setBreed(requestDto.getBreed());
@@ -87,42 +108,10 @@ public class MissingPostService {
     post.setWeight(requestDto.getWeight());
     post.setColor(requestDto.getColor());
     post.setRescueLocation(requestDto.getRescueLocation());
+    post.setMediaUrls(requestDto.getMediaUrls());
     post.setStatus(PostStatus.MISSING);
     post.setAuthor(member);
     post.setCreatedAt(LocalDateTime.now());
-
-    // 파일 처리
-    if (file != null && !file.isEmpty()) {
-      try {
-        String uploadDir = System.getProperty("user.dir") + "/uploads/";
-
-        File dir = new File(uploadDir);
-
-        if (!dir.exists())
-          dir.mkdirs();
-
-        String originalFilename = file.getOriginalFilename();
-
-        String savedFilename = UUID.randomUUID() + "_" + originalFilename;
-
-        saveFile = new File(dir, savedFilename);
-
-        // 실제 파일 저장
-        file.transferTo(saveFile);
-
-        // DB에 저장할 URL
-        String imageUrl = "/uploads/" + savedFilename;
-
-        post.setMediaUrls(List.of(imageUrl));
-      } catch (IOException e) {
-        if (saveFile != null && saveFile.exists())
-          saveFile.delete();
-        throw new RuntimeException(
-                "파일 업로드 중 오류가 발생했습니다.",
-                e
-        );
-      }
-    }
 
     MissingPost savePost = missingPostRepository.save(post);
     return new MissingPostResponseDto(savePost);
